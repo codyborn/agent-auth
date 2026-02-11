@@ -21,16 +21,26 @@ const config = {
     10: process.env.RPC_OPTIMISM || 'https://optimism.drpc.org',
     42161: process.env.RPC_ARBITRUM || 'https://arbitrum.drpc.org',
     137: process.env.RPC_POLYGON || 'https://polygon.drpc.org',
+    143: process.env.RPC_MONAD || 'https://monad-mainnet.drpc.org',
   },
 };
 
 // ---- Chain Map ----
+const monad = {
+  id: 143,
+  name: 'Monad',
+  nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
+  rpcUrls: { default: { http: ['https://monad-mainnet.drpc.org'] } },
+  blockExplorers: { default: { name: 'Monad Explorer', url: 'https://explorer.monad.xyz' } },
+};
+
 const CHAIN_MAP = {
   1: { chain: mainnet, name: 'Ethereum' },
   8453: { chain: base, name: 'Base' },
   10: { chain: optimism, name: 'Optimism' },
   42161: { chain: arbitrum, name: 'Arbitrum' },
   137: { chain: polygon, name: 'Polygon' },
+  143: { chain: monad, name: 'Monad' },
 };
 
 function getClient(chainId) {

@@ -22,6 +22,7 @@ const config: AgentAuthConfig = {
     10: process.env.RPC_OPTIMISM || 'https://optimism.drpc.org',
     42161: process.env.RPC_ARBITRUM || 'https://arbitrum.drpc.org',
     137: process.env.RPC_POLYGON || 'https://polygon.drpc.org',
+    143: process.env.RPC_MONAD || 'https://monad-mainnet.drpc.org',
   },
 };
 

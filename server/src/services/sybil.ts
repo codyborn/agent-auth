@@ -2,12 +2,21 @@ import { createPublicClient, http, formatEther, type PublicClient } from 'viem';
 import { mainnet, base, optimism, arbitrum, polygon } from 'viem/chains';
 import type { SybilScoreBreakdown } from '../types';
 
+const monad = {
+  id: 143,
+  name: 'Monad',
+  nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
+  rpcUrls: { default: { http: ['https://monad-mainnet.drpc.org'] } },
+  blockExplorers: { default: { name: 'Monad Explorer', url: 'https://explorer.monad.xyz' } },
+} as const;
+
 const CHAIN_MAP: Record<number, { chain: any; name: string }> = {
   1: { chain: mainnet, name: 'Ethereum' },
   8453: { chain: base, name: 'Base' },
   10: { chain: optimism, name: 'Optimism' },
   42161: { chain: arbitrum, name: 'Arbitrum' },
   137: { chain: polygon, name: 'Polygon' },
+  143: { chain: monad, name: 'Monad' },
 };
 
 function getClient(chainId: number, rpcUrls: Record<number, string>): PublicClient {

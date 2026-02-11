@@ -23,10 +23,10 @@ Agent                    Website                   AgentAuth Server
   |                        |                            |
   |   1. Visit site        |                            |
   |----------------------->|                            |
-  |                        |  2. Request challenge       |
+  |                        |  2. Request challenge      |
   |                        |   (with API key)           |
   |                        |--------------------------->|
-  |                        |  3. Return nonce + message  |
+  |                        |  3. Return nonce + message |
   |                        |<---------------------------|
   |  4. Sign message       |                            |
   |<-----------------------|                            |
@@ -43,11 +43,11 @@ Agent                    Website                   AgentAuth Server
 
 ## Sybil Score (0-100)
 
-All signals are **aggregated across all supported chains** (Ethereum, Base, Optimism, Arbitrum, Polygon):
+All signals are **aggregated across all supported chains** (Ethereum, Base, Optimism, Arbitrum, Polygon, Monad):
 
 | Signal | What it checks | Max Points |
 |--------|---------------|------------|
-| **Balance** | Total ETH holdings across all chains | 33 |
+| **Balance** | Total native token holdings across all chains | 33 |
 | **Transaction Count** | Total transactions across all chains | 34 |
 | **Account Age** | Estimated account maturity | 33 |
 
@@ -297,6 +297,7 @@ npm run dev
 | `RPC_OPTIMISM` | Public RPC | Optimism RPC |
 | `RPC_ARBITRUM` | Public RPC | Arbitrum RPC |
 | `RPC_POLYGON` | Public RPC | Polygon RPC |
+| `RPC_MONAD` | Public RPC | Monad RPC |
 
 ## Architecture
 
@@ -342,6 +343,7 @@ All sybil scores are aggregated across:
 - Optimism (Chain ID: 10)
 - Arbitrum (Chain ID: 42161)
 - Polygon (Chain ID: 137)
+- Monad (Chain ID: 143)
 
 ## Built For
 
