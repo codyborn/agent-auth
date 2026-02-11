@@ -6,7 +6,8 @@
   "workspaces": [
     "server",
     "sdk",
-    "demo"
+    "demo",
+    "agent-skill"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=server",

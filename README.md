@@ -84,7 +84,55 @@ console.log(`Sybil Score: ${session.sybilScore}/100`);
 console.log(`JWT: ${session.token}`);
 ```
 
-### 3. Integrate (AI Agents / Node.js)
+### 3. Integrate (AI Agents - Recommended)
+
+The Agent Skill package handles the full auth flow in a single call:
+
+```typescript
+import { AgentAuthSkill } from '@agent-auth/agent-skill';
+
+const agent = new AgentAuthSkill({
+  serverUrl: 'https://agent-auth-alpha.vercel.app',
+  apiKey: 'aa_your_site_api_key',
+  privateKey: '0x...',  // Agent's Ethereum private key
+});
+
+// One-call authentication
+const session = await agent.authenticate();
+console.log(`Score: ${session.sybilScore}/100`);
+
+// Make authenticated requests to protected APIs
+const res = await agent.fetch('https://protected-api.com/data');
+```
+
+### 4. MCP Server (for Claude, ChatGPT, etc.)
+
+Add AgentAuth as an MCP tool server so any MCP-compatible AI agent can authenticate:
+
+```json
+{
+  "mcpServers": {
+    "agentauth": {
+      "command": "npx",
+      "args": ["@agent-auth/agent-skill"],
+      "env": {
+        "AGENTAUTH_SERVER_URL": "https://agent-auth-alpha.vercel.app",
+        "AGENTAUTH_API_KEY": "aa_your_site_api_key",
+        "AGENT_PRIVATE_KEY": "0x..."
+      }
+    }
+  }
+}
+```
+
+Available MCP tools:
+- `authenticate` - Full wallet auth flow, returns JWT + sybil attestation
+- `check_sybil_score` - Look up any address's sybil score
+- `authenticated_fetch` - Make HTTP requests with the auth token
+- `get_session` - Check current session status
+- `get_agent_address` - Get the configured wallet address
+
+### 5. Integrate (Node.js with SDK)
 
 ```typescript
 import { AgentAuthClient, PrivateKeyWalletProvider } from '@agent-auth/sdk';
@@ -97,7 +145,7 @@ const wallet = new PrivateKeyWalletProvider(
 );
 
 const auth = new AgentAuthClient({
-  serverUrl: 'https://your-agentauth-server.com',
+  serverUrl: 'https://agent-auth-alpha.vercel.app',
   apiKey: 'aa_your_site_api_key',
 });
 
@@ -258,27 +306,23 @@ agent-auth/
 │   └── src/
 │       ├── index.ts           # Server entry point
 │       ├── types.ts           # TypeScript types
-│       ├── routes/
-│       │   ├── sites.ts       # Site registration
-│       │   ├── challenge.ts   # Challenge generation (requires API key)
-│       │   ├── verify.ts      # Signature verification + sybil scoring (requires API key)
-│       │   ├── score.ts       # Standalone sybil score check (public)
-│       │   └── session.ts     # JWT session validation
-│       └── services/
-│           ├── sites.ts       # Site registration & API key management
-│           ├── challenge.ts   # Nonce generation & storage
-│           ├── sybil.ts       # Multi-chain onchain sybil score computation
-│           └── jwt.ts         # JWT creation & verification
+│       ├── routes/            # API route handlers
+│       └── services/          # Sybil scoring, attestation, JWT, etc.
 ├── sdk/              # TypeScript SDK for website integration
 │   └── src/
-│       ├── index.ts           # Exports
 │       ├── client.ts          # AgentAuthClient + wallet providers
 │       └── types.ts           # SDK types
-└── demo/             # Demo website
-    └── public/
-        ├── index.html         # Demo page
-        ├── styles.css         # Styles
-        └── app.js             # Demo app logic
+├── agent-skill/      # Agent integration package
+│   └── src/
+│       ├── skill.ts           # AgentAuthSkill - one-call auth for agents
+│       └── mcp-server.ts      # MCP tool server for AI agents
+├── demo/             # Demo website
+│   └── public/
+│       ├── index.html         # Interactive demo
+│       └── app.js             # Demo app logic
+├── api/              # Vercel serverless function
+│   └── index.js               # Standalone API (production)
+└── public/           # Static files (Vercel)
 ```
 
 ## Protocol Compatibility
