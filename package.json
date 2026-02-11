@@ -11,8 +11,8 @@
   "scripts": {
     "dev": "npm run dev --workspace=server",
     "dev:demo": "npm run dev --workspace=demo",
-    "build": "npm run build --workspace=sdk && npm run build --workspace=server",
-    "build:all": "npm run build --workspace=sdk && npm run build --workspace=server && npm run build --workspace=demo"
+    "build": "echo 'Vercel build: API is api/index.js, static files in public/'",
+    "build:local": "npm run build --workspace=sdk && npm run build --workspace=server"
   },
   "license": "MIT"
 }
