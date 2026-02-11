@@ -1,0 +1,8 @@
+{
+  "name": "@agent-auth/demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Demo is served by the server. Run npm run dev from the root.'"
+  }
+}

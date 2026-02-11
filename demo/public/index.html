@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentAuth Demo - Agent Authentication with Sybil Resistance</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <span class="logo-icon">&#x1f6e1;</span>
+        <h1>AgentAuth</h1>
+      </div>
+      <p class="subtitle">OAuth-like authentication for AI agents with onchain sybil resistance</p>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-content">
+        <h2>Verify agents, not just wallets</h2>
+        <p>AgentAuth lets websites authenticate AI agents using their Ethereum wallets, then scores their onchain history to prevent sybil attacks and abuse.</p>
+        <div class="hero-features">
+          <div class="feature">
+            <span class="feature-icon">&#x1f511;</span>
+            <span>Wallet-based auth</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">&#x1f9ee;</span>
+            <span>Sybil scoring</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">&#x26a1;</span>
+            <span>Simple SDK</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Auth Demo Section -->
+    <section class="demo-section">
+      <h3>Try It Out</h3>
+      <p class="demo-description">Connect your wallet to authenticate and see your sybil score.</p>
+
+      <div id="auth-panel" class="auth-panel">
+        <!-- Not connected state -->
+        <div id="connect-state" class="state">
+          <button id="connect-btn" class="btn btn-primary btn-large">
+            <span class="btn-icon">&#x1f4b3;</span>
+            Sign In with AgentAuth
+          </button>
+          <p class="help-text">Requires a browser wallet (MetaMask, etc.)</p>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loading-state" class="state hidden">
+          <div class="spinner"></div>
+          <p>Verifying wallet & computing sybil score...</p>
+        </div>
+
+        <!-- Connected state -->
+        <div id="connected-state" class="state hidden">
+          <div class="session-info">
+            <div class="address-row">
+              <span class="label">Address:</span>
+              <code id="session-address"></code>
+            </div>
+            <div class="address-row">
+              <span class="label">Activity:</span>
+              <span id="session-chain"></span>
+            </div>
+          </div>
+
+          <div class="score-display">
+            <div class="score-circle" id="score-circle">
+              <span class="score-number" id="score-number">0</span>
+              <span class="score-label">/ 100</span>
+            </div>
+            <div class="score-title">Sybil Score</div>
+          </div>
+
+          <div class="score-breakdown">
+            <div class="score-bar">
+              <span class="bar-label">Balance</span>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-balance" style="width: 0%"></div>
+              </div>
+              <span class="bar-value" id="val-balance">0/33</span>
+            </div>
+            <div class="score-bar">
+              <span class="bar-label">Tx Count</span>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-txcount" style="width: 0%"></div>
+              </div>
+              <span class="bar-value" id="val-txcount">0/34</span>
+            </div>
+            <div class="score-bar">
+              <span class="bar-label">Account Age</span>
+              <div class="bar-track">
+                <div class="bar-fill" id="bar-age" style="width: 0%"></div>
+              </div>
+              <span class="bar-value" id="val-age">0/33</span>
+            </div>
+          </div>
+
+          <div class="details-panel">
+            <h4>Raw Details</h4>
+            <div class="details-grid">
+              <div class="detail-item">
+                <span class="detail-label">Balance</span>
+                <span class="detail-value" id="detail-balance">-</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Transactions</span>
+                <span class="detail-value" id="detail-txcount">-</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Chains Active</span>
+                <span class="detail-value" id="detail-chains">-</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">JWT Token</span>
+                <span class="detail-value detail-token" id="detail-token">-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="access-demo">
+            <h4>Access Control Demo</h4>
+            <div class="access-tiers">
+              <div class="tier" id="tier-basic">
+                <div class="tier-header">
+                  <span class="tier-name">Basic Access</span>
+                  <span class="tier-threshold">Score &ge; 0</span>
+                </div>
+                <p>Read public content</p>
+              </div>
+              <div class="tier" id="tier-standard">
+                <div class="tier-header">
+                  <span class="tier-name">Standard Access</span>
+                  <span class="tier-threshold">Score &ge; 25</span>
+                </div>
+                <p>Create content, limited API calls</p>
+              </div>
+              <div class="tier" id="tier-premium">
+                <div class="tier-header">
+                  <span class="tier-name">Premium Access</span>
+                  <span class="tier-threshold">Score &ge; 50</span>
+                </div>
+                <p>Full API access, higher rate limits</p>
+              </div>
+              <div class="tier" id="tier-trusted">
+                <div class="tier-header">
+                  <span class="tier-name">Trusted Agent</span>
+                  <span class="tier-threshold">Score &ge; 75</span>
+                </div>
+                <p>Unlimited access, admin features</p>
+              </div>
+            </div>
+          </div>
+
+          <button id="disconnect-btn" class="btn btn-secondary">Disconnect</button>
+        </div>
+
+        <!-- Error state -->
+        <div id="error-state" class="state hidden">
+          <p class="error-message" id="error-message"></p>
+          <button id="retry-btn" class="btn btn-secondary">Try Again</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Score Checker Section -->
+    <section class="demo-section">
+      <h3>Score Checker</h3>
+      <p class="demo-description">Check the sybil score for any Ethereum address (aggregated across all chains, no wallet required).</p>
+      <div class="score-checker">
+        <div class="input-row">
+          <input type="text" id="check-address" placeholder="0x..." class="input" />
+          <button id="check-btn" class="btn btn-primary">Check Score</button>
+        </div>
+        <div id="check-result" class="check-result hidden"></div>
+      </div>
+    </section>
+
+    <!-- Integration Guide -->
+    <section class="demo-section">
+      <h3>Integrate in 5 Lines</h3>
+      <h4>Step 1: Register your site</h4>
+      <div class="code-block">
+        <pre><code>curl -X POST https://your-agentauth-server.com/api/sites/register \
+  -H 'Content-Type: application/json' \
+  -d '{"domain":"example.com","callbackUrls":["https://example.com/callback"],"minScore":25}'
+# Returns: { siteId, apiKey, ... }</code></pre>
+      </div>
+
+      <h4 style="margin-top: 2rem;">Step 2: Add to your website</h4>
+      <div class="code-block">
+        <pre><code>import { AgentAuthClient, BrowserWalletProvider } from '@agent-auth/sdk';
+
+const auth = new AgentAuthClient({
+  serverUrl: 'https://your-agentauth-server.com',
+  apiKey: 'aa_your_site_api_key'   // From registration
+});
+
+const session = await auth.login(new BrowserWalletProvider());
+console.log(`Score: ${session.sybilScore}/100`);</code></pre>
+      </div>
+
+      <h4 style="margin-top: 2rem;">For AI Agents (Node.js)</h4>
+      <div class="code-block">
+        <pre><code>import { AgentAuthClient, PrivateKeyWalletProvider } from '@agent-auth/sdk';
+import { privateKeyToAccount } from 'viem/accounts';
+
+const account = privateKeyToAccount('0x...');
+const wallet = new PrivateKeyWalletProvider(
+  account.address,
+  (msg) => account.signMessage({ message: msg })
+);
+
+const auth = new AgentAuthClient({
+  serverUrl: 'https://your-agentauth-server.com',
+  apiKey: 'aa_your_site_api_key'
+});
+const session = await auth.login(wallet);</code></pre>
+      </div>
+    </section>
+
+    <!-- Protocol Flow -->
+    <section class="demo-section">
+      <h3>How It Works</h3>
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="step-number">0</div>
+          <div class="step-content">
+            <strong>Register Site</strong>
+            <p>Developer registers domain, callback URLs, and minimum sybil score. Gets an API key.</p>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <strong>Challenge</strong>
+            <p>Website requests a signed challenge using its API key</p>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <strong>Sign</strong>
+            <p>Agent signs the challenge with their Ethereum wallet</p>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <strong>Verify + Score</strong>
+            <p>Server verifies signature, checks onchain history across all chains, computes sybil score</p>
+          </div>
+        </div>
+        <div class="flow-arrow">&darr;</div>
+        <div class="flow-step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <strong>Enforce + Access</strong>
+            <p>Server enforces site's minimum score. If passed, returns JWT for tiered access.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>Built for the <a href="https://moltiverse.dev">Moltiverse Hackathon</a> | <a href="https://github.com/codyborn/agent-auth">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

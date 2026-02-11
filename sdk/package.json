@@ -1,0 +1,23 @@
+{
+  "name": "@agent-auth/sdk",
+  "version": "0.1.0",
+  "description": "AgentAuth SDK - Add agent authentication with sybil resistance to any website",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "license": "MIT"
+}
