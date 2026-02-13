@@ -23,10 +23,8 @@ function showState(state) {
   state.classList.remove('hidden');
 }
 
-// Register the demo site on first load
-async function ensureSiteRegistered() {
-  if (DEMO_API_KEY) return DEMO_API_KEY;
-
+// Register the demo site (or re-register if the server restarted)
+async function registerDemoSite() {
   const res = await fetch(`${API_URL}/api/sites/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -44,6 +42,21 @@ async function ensureSiteRegistered() {
   localStorage.setItem('agentauth_demo_apikey', data.apiKey);
   console.log('Demo site registered:', data.siteId);
   return data.apiKey;
+}
+
+async function ensureSiteRegistered() {
+  if (!DEMO_API_KEY) return registerDemoSite();
+
+  // Verify the cached key still works (server may have restarted)
+  const check = await fetch(`${API_URL}/api/sites/me`, {
+    headers: { 'x-api-key': DEMO_API_KEY },
+  });
+
+  if (check.ok) return DEMO_API_KEY;
+
+  // Key is stale - re-register
+  console.log('Cached API key expired, re-registering...');
+  return registerDemoSite();
 }
 
 // Update the score display
