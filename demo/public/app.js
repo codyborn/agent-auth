@@ -23,8 +23,24 @@ function showState(state) {
   state.classList.remove('hidden');
 }
 
-// Register the demo site (or re-register if the server restarted)
-async function registerDemoSite() {
+// Register the demo site using wallet signature (prevents spam)
+async function registerDemoSite(address) {
+  // Step 1: Get registration challenge
+  const challengeRes = await fetch(`${API_URL}/api/register/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address }),
+  });
+  if (!challengeRes.ok) throw new Error('Failed to get registration challenge');
+  const { challenge } = await challengeRes.json();
+
+  // Step 2: Sign with wallet
+  const signature = await window.ethereum.request({
+    method: 'personal_sign',
+    params: [challenge, address],
+  });
+
+  // Step 3: Register site with signed challenge
   const res = await fetch(`${API_URL}/api/sites/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -32,20 +48,25 @@ async function registerDemoSite() {
       domain: window.location.hostname || 'localhost',
       callbackUrls: [window.location.origin],
       minScore: 0, // Demo: allow all scores so we can show the tiers
+      message: challenge,
+      signature,
     }),
   });
 
-  if (!res.ok) throw new Error('Failed to register demo site');
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to register demo site');
+  }
 
   const data = await res.json();
   DEMO_API_KEY = data.apiKey;
   localStorage.setItem('agentauth_demo_apikey', data.apiKey);
-  console.log('Demo site registered:', data.siteId);
+  console.log('Demo site registered:', data.siteId, 'by', data.registeredBy);
   return data.apiKey;
 }
 
-async function ensureSiteRegistered() {
-  if (!DEMO_API_KEY) return registerDemoSite();
+async function ensureSiteRegistered(address) {
+  if (!DEMO_API_KEY) return registerDemoSite(address);
 
   // Verify the cached key still works (server may have restarted)
   const check = await fetch(`${API_URL}/api/sites/me`, {
@@ -56,7 +77,7 @@ async function ensureSiteRegistered() {
 
   // Key is stale - re-register
   console.log('Cached API key expired, re-registering...');
-  return registerDemoSite();
+  return registerDemoSite(address);
 }
 
 // Update the score display
@@ -134,12 +155,12 @@ async function connect() {
   showState(loadingState);
 
   try {
-    // Ensure demo site is registered
-    const apiKey = await ensureSiteRegistered();
-
     // Request accounts
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     const address = accounts[0];
+
+    // Ensure demo site is registered (requires wallet signature)
+    const apiKey = await ensureSiteRegistered(address);
 
     // Step 1: Get challenge (with API key)
     const challengeRes = await fetch(`${API_URL}/api/challenge`, {
@@ -248,5 +269,15 @@ document.getElementById('check-address').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') checkScore();
 });
 
-// Auto-register demo site on load
-ensureSiteRegistered().catch((err) => console.warn('Demo site registration deferred:', err.message));
+// Validate cached API key on load (registration now requires wallet signature)
+if (DEMO_API_KEY) {
+  fetch(`${API_URL}/api/sites/me`, { headers: { 'x-api-key': DEMO_API_KEY } })
+    .then(res => {
+      if (!res.ok) {
+        console.log('Cached API key is stale, will re-register on next sign-in');
+        DEMO_API_KEY = null;
+        localStorage.removeItem('agentauth_demo_apikey');
+      }
+    })
+    .catch(() => {});
+}

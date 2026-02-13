@@ -52,9 +52,11 @@ function getClient(chainId) {
 
 // ---- In-memory stores ----
 const challenges = new Map();
+const registrationChallenges = new Map();
 const sites = new Map();
 const sitesByApiKey = new Map();
 const attestationCache = new Map();
+const REGISTRATION_MIN_SCORE = parseInt(process.env.REGISTRATION_MIN_SCORE || '0');
 
 // ---- Sites ----
 function registerSite(req) {
@@ -192,14 +194,66 @@ app.use(express.json());
 // Health
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', version: '0.1.0' }));
 
-// Sites
-app.post('/api/sites/register', (req, res) => {
-  const { domain, callbackUrls, minScore } = req.body;
+// Registration challenge (no API key needed - this bootstraps the auth)
+app.post('/api/register/challenge', (req, res) => {
+  const { address } = req.body;
+  if (!address || !isAddress(address)) return res.status(400).json({ error: 'Valid Ethereum address is required' });
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const issuedAt = new Date().toISOString();
+  const expirationTime = new Date(Date.now() + config.challengeTTL * 1000).toISOString();
+  const message = [
+    `AgentAuth wants you to sign in with your Ethereum account:`,
+    address, '',
+    'Register a new site with AgentAuth', '',
+    `URI: https://agentauth.xyz`, `Version: 1`,
+    `Nonce: ${nonce}`, `Issued At: ${issuedAt}`, `Expiration Time: ${expirationTime}`,
+  ].join('\n');
+  registrationChallenges.set(nonce, { message, address, expiresAt: Date.now() + config.challengeTTL * 1000 });
+  res.json({ challenge: message, nonce, issuedAt, expirationTime });
+});
+
+// Sites - now requires wallet signature to prevent spam
+app.post('/api/sites/register', async (req, res) => {
+  const { domain, callbackUrls, minScore, message, signature } = req.body;
+
+  // Validate site fields
   if (!domain) return res.status(400).json({ error: 'domain is required' });
   if (!callbackUrls || !Array.isArray(callbackUrls) || callbackUrls.length === 0) return res.status(400).json({ error: 'callbackUrls must be a non-empty array' });
   if (minScore === undefined || typeof minScore !== 'number' || minScore < 0 || minScore > 100) return res.status(400).json({ error: 'minScore must be a number between 0 and 100' });
+
+  // Validate wallet signature
+  if (!message || !signature) return res.status(400).json({ error: 'message and signature are required. Get a challenge from POST /api/register/challenge first.' });
+
+  const parsed = parseMessage(message);
+  if (!parsed) return res.status(400).json({ error: 'Invalid message format' });
+
+  // Validate the registration nonce
+  const regEntry = registrationChallenges.get(parsed.nonce);
+  if (!regEntry) return res.status(401).json({ error: 'Invalid or expired registration challenge' });
+  if (regEntry.expiresAt < Date.now()) { registrationChallenges.delete(parsed.nonce); return res.status(401).json({ error: 'Registration challenge has expired' }); }
+  registrationChallenges.delete(parsed.nonce);
+
+  // Verify wallet signature
+  let valid;
+  try { valid = await verifyMessage({ address: parsed.address, message, signature }); }
+  catch { return res.status(401).json({ error: 'Signature verification failed' }); }
+  if (!valid) return res.status(401).json({ error: 'Invalid signature' });
+
+  // Check sybil score
+  if (REGISTRATION_MIN_SCORE > 0) {
+    try {
+      const sybilResult = await computeSybilScore(parsed.address);
+      if (sybilResult.breakdown.totalScore < REGISTRATION_MIN_SCORE) {
+        return res.status(403).json({ error: 'Sybil score too low to register a site', sybilScore: sybilResult.breakdown.totalScore, requiredScore: REGISTRATION_MIN_SCORE });
+      }
+    } catch (err) {
+      console.error('Registration sybil check error:', err);
+      return res.status(500).json({ error: 'Failed to verify onchain identity' });
+    }
+  }
+
   const site = registerSite({ domain, callbackUrls, minScore });
-  res.status(201).json({ ...site, message: 'Save your API key - it cannot be retrieved later.' });
+  res.status(201).json({ ...site, registeredBy: parsed.address, message: 'Save your API key - it cannot be retrieved later.' });
 });
 
 app.get('/api/sites/me', (req, res) => {
