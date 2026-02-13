@@ -199,3 +199,81 @@ export async function authenticate(config: AgentAuthConfig): Promise<AuthSession
   const skill = new AgentAuthSkill(config);
   return skill.authenticate();
 }
+
+export interface RegisterSiteConfig {
+  /** AgentAuth server URL */
+  serverUrl: string;
+  /** Your Ethereum private key (hex string with 0x prefix) */
+  privateKey: `0x${string}`;
+  /** Domain for the site */
+  domain: string;
+  /** Allowed callback URLs */
+  callbackUrls: string[];
+  /** Minimum sybil score required (0-100) */
+  minScore: number;
+}
+
+export interface RegisteredSite {
+  siteId: string;
+  apiKey: string;
+  domain: string;
+  callbackUrls: string[];
+  minScore: number;
+  registeredBy: string;
+  createdAt: string;
+}
+
+/**
+ * Register a new site with AgentAuth.
+ * Requires a wallet signature to prevent spam.
+ *
+ *   const site = await registerSite({
+ *     serverUrl: 'https://agent-auth-alpha.vercel.app',
+ *     privateKey: '0x...',
+ *     domain: 'example.com',
+ *     callbackUrls: ['https://example.com/callback'],
+ *     minScore: 25,
+ *   });
+ *   console.log('API Key:', site.apiKey);
+ */
+export async function registerSite(config: RegisterSiteConfig): Promise<RegisteredSite> {
+  const serverUrl = config.serverUrl.replace(/\/$/, '');
+  const account = privateKeyToAccount(config.privateKey);
+
+  // Step 1: Get registration challenge
+  const challengeRes = await fetch(`${serverUrl}/api/register/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: account.address }),
+  });
+
+  if (!challengeRes.ok) {
+    const err = await challengeRes.json() as { error: string };
+    throw new Error(`Registration challenge failed: ${err.error}`);
+  }
+
+  const challengeData = await challengeRes.json() as { challenge: string };
+
+  // Step 2: Sign with wallet
+  const signature = await account.signMessage({ message: challengeData.challenge });
+
+  // Step 3: Register with signed challenge
+  const regRes = await fetch(`${serverUrl}/api/sites/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      domain: config.domain,
+      callbackUrls: config.callbackUrls,
+      minScore: config.minScore,
+      message: challengeData.challenge,
+      signature,
+    }),
+  });
+
+  if (!regRes.ok) {
+    const err = await regRes.json() as { error: string };
+    throw new Error(`Site registration failed: ${err.error}`);
+  }
+
+  return regRes.json() as Promise<RegisteredSite>;
+}

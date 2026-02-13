@@ -55,38 +55,52 @@ The minimum score is **set by the site developer during registration** and enfor
 
 ## Quick Start
 
-### 1. Register Your Site
+### 1. Register Your Site (requires wallet signature)
+
+Site registration is authenticated via AgentAuth itself to prevent spam. You prove wallet ownership and the server checks your onchain identity before issuing an API key.
+
+**Using the Agent Skill (recommended):**
+
+```typescript
+import { registerSite } from '@agent-auth/agent-skill';
+
+const site = await registerSite({
+  serverUrl: 'https://agent-auth-alpha.vercel.app',
+  privateKey: '0x...',  // Your Ethereum private key
+  domain: 'example.com',
+  callbackUrls: ['https://example.com/callback'],
+  minScore: 25,
+});
+console.log('API Key:', site.apiKey);  // Save this!
+```
+
+**Using curl (3 steps):**
 
 ```bash
-curl -X POST https://your-agentauth-server.com/api/sites/register \
+# Step 1: Get a registration challenge
+curl -X POST https://agent-auth-alpha.vercel.app/api/register/challenge \
+  -H 'Content-Type: application/json' \
+  -d '{ "address": "0xYOUR_WALLET_ADDRESS" }'
+# Returns: { challenge, nonce, ... }
+
+# Step 2: Sign the challenge with your wallet (use ethers.js, viem, etc.)
+
+# Step 3: Register with the signed challenge
+curl -X POST https://agent-auth-alpha.vercel.app/api/sites/register \
   -H 'Content-Type: application/json' \
   -d '{
     "domain": "example.com",
     "callbackUrls": ["https://example.com/callback"],
-    "minScore": 25
+    "minScore": 25,
+    "message": "<signed challenge from step 1>",
+    "signature": "0x<signature from step 2>"
   }'
-# Returns: { siteId, apiKey, ... }
+# Returns: { siteId, apiKey, registeredBy, ... }
 ```
 
-### 2. Integrate (Browser)
+### 2. Integrate (AI Agents - Recommended)
 
-```typescript
-import { AgentAuthClient, BrowserWalletProvider } from '@agent-auth/sdk';
-
-const auth = new AgentAuthClient({
-  serverUrl: 'https://your-agentauth-server.com',
-  apiKey: 'aa_your_site_api_key',
-});
-
-const session = await auth.login(new BrowserWalletProvider());
-console.log(`Authenticated: ${session.address}`);
-console.log(`Sybil Score: ${session.sybilScore}/100`);
-console.log(`JWT: ${session.token}`);
-```
-
-### 3. Integrate (AI Agents - Recommended)
-
-The Agent Skill package handles the full auth flow in a single call:
+The Agent Skill handles the full auth flow in a single call:
 
 ```typescript
 import { AgentAuthSkill } from '@agent-auth/agent-skill';
@@ -105,7 +119,7 @@ console.log(`Score: ${session.sybilScore}/100`);
 const res = await agent.fetch('https://protected-api.com/data');
 ```
 
-### 4. MCP Server (for Claude, ChatGPT, etc.)
+### 3. MCP Server (for Claude, ChatGPT, etc.)
 
 Add AgentAuth as an MCP tool server so any MCP-compatible AI agent can authenticate:
 
@@ -126,11 +140,28 @@ Add AgentAuth as an MCP tool server so any MCP-compatible AI agent can authentic
 ```
 
 Available MCP tools:
+- `register_site` - Register a new site (wallet signature required)
 - `authenticate` - Full wallet auth flow, returns JWT + sybil attestation
 - `check_sybil_score` - Look up any address's sybil score
 - `authenticated_fetch` - Make HTTP requests with the auth token
 - `get_session` - Check current session status
 - `get_agent_address` - Get the configured wallet address
+
+### 4. Integrate (Browser)
+
+```typescript
+import { AgentAuthClient, BrowserWalletProvider } from '@agent-auth/sdk';
+
+const auth = new AgentAuthClient({
+  serverUrl: 'https://agent-auth-alpha.vercel.app',
+  apiKey: 'aa_your_site_api_key',
+});
+
+const session = await auth.login(new BrowserWalletProvider());
+console.log(`Authenticated: ${session.address}`);
+console.log(`Sybil Score: ${session.sybilScore}/100`);
+console.log(`JWT: ${session.token}`);
+```
 
 ### 5. Integrate (Node.js with SDK)
 
@@ -155,27 +186,46 @@ const session = await auth.login(wallet);
 
 ### Check Any Address (No Auth Required)
 
-```typescript
-const auth = new AgentAuthClient({
-  serverUrl: 'https://your-agentauth-server.com',
-  apiKey: 'aa_your_site_api_key',
-});
-const result = await auth.checkScore('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045');
-// { sybilScore: 100, breakdown: { balanceScore: 33, txCountScore: 34, accountAgeScore: 33 } }
+```bash
+curl https://agent-auth-alpha.vercel.app/api/score/0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
+# { sybilScore: 100, breakdown: { balanceScore: 33, txCountScore: 34, accountAgeScore: 33 } }
 ```
 
 ## API Reference
 
+### `POST /api/register/challenge`
+
+Get a registration challenge for site registration. **No API key required** - this bootstraps the auth flow.
+
+**Body:**
+```json
+{
+  "address": "0x..."
+}
+```
+
+**Response:**
+```json
+{
+  "challenge": "AgentAuth wants you to sign in...",
+  "nonce": "abc123...",
+  "issuedAt": "2026-01-01T00:00:00Z",
+  "expirationTime": "2026-01-01T00:05:00Z"
+}
+```
+
 ### `POST /api/sites/register`
 
-Register a new site. Returns an API key required for challenge/verify endpoints.
+Register a new site. **Requires a signed registration challenge** to prevent spam. Returns an API key for challenge/verify endpoints.
 
 **Body:**
 ```json
 {
   "domain": "example.com",
   "callbackUrls": ["https://example.com/callback"],
-  "minScore": 25
+  "minScore": 25,
+  "message": "AgentAuth wants you to sign in...",
+  "signature": "0x..."
 }
 ```
 
@@ -187,6 +237,7 @@ Register a new site. Returns an API key required for challenge/verify endpoints.
   "domain": "example.com",
   "callbackUrls": ["https://example.com/callback"],
   "minScore": 25,
+  "registeredBy": "0x...",
   "createdAt": "2026-01-01T00:00:00Z"
 }
 ```
@@ -298,6 +349,7 @@ npm run dev
 | `RPC_ARBITRUM` | Public RPC | Arbitrum RPC |
 | `RPC_POLYGON` | Public RPC | Polygon RPC |
 | `RPC_MONAD` | Public RPC | Monad RPC |
+| `REGISTRATION_MIN_SCORE` | `0` | Min sybil score to register a site |
 
 ## Architecture
 

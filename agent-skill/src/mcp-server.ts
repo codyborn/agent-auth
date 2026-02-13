@@ -3,7 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { AgentAuthSkill } from './skill';
+import { AgentAuthSkill, registerSite } from './skill';
 
 // Configuration from environment variables
 const AGENTAUTH_SERVER_URL = process.env.AGENTAUTH_SERVER_URL || 'https://agent-auth-alpha.vercel.app';
@@ -30,6 +30,48 @@ const server = new McpServer({
   name: 'agentauth',
   version: '0.1.0',
 });
+
+// Tool: Register a new site
+server.tool(
+  'register_site',
+  'Register a new site with AgentAuth. Requires wallet signature to prevent spam. Returns an API key for the site. Use this before authenticate if you need a new API key.',
+  {
+    domain: z.string().describe('Domain for the site (e.g. example.com)'),
+    callbackUrls: z.string().describe('Comma-separated callback URLs'),
+    minScore: z.number().min(0).max(100).default(0).describe('Minimum sybil score required (0-100)'),
+  },
+  async ({ domain, callbackUrls, minScore }) => {
+    try {
+      if (!AGENT_PRIVATE_KEY) throw new Error('AGENT_PRIVATE_KEY environment variable is required');
+      const site = await registerSite({
+        serverUrl: AGENTAUTH_SERVER_URL,
+        privateKey: AGENT_PRIVATE_KEY as `0x${string}`,
+        domain,
+        callbackUrls: callbackUrls.split(',').map(u => u.trim()),
+        minScore,
+      });
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            siteId: site.siteId,
+            apiKey: site.apiKey,
+            domain: site.domain,
+            minScore: site.minScore,
+            registeredBy: site.registeredBy,
+            message: 'Save your API key - set it as AGENTAUTH_API_KEY to use authenticate.',
+          }, null, 2),
+        }],
+      };
+    } catch (err: any) {
+      return {
+        content: [{ type: 'text' as const, text: `Registration failed: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
 
 // Tool: Authenticate with a site
 server.tool(
@@ -70,7 +112,7 @@ server.tool(
 // Tool: Check sybil score for any address
 server.tool(
   'check_sybil_score',
-  'Check the sybil resistance score for any Ethereum address. Returns a score from 0-100 based on onchain history across Ethereum, Base, Optimism, Arbitrum, and Polygon.',
+  'Check the sybil resistance score for any Ethereum address. Returns a score from 0-100 based on onchain history across Ethereum, Base, Optimism, Arbitrum, Polygon, and Monad.',
   { address: z.string().describe('Ethereum address to check (0x...)') },
   async ({ address }) => {
     try {

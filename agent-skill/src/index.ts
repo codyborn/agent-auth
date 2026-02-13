@@ -1,2 +1,2 @@
-export { AgentAuthSkill, authenticate } from './skill';
-export type { AgentAuthConfig, AuthSession, ScoreResult } from './skill';
+export { AgentAuthSkill, authenticate, registerSite } from './skill';
+export type { AgentAuthConfig, AuthSession, ScoreResult, RegisterSiteConfig, RegisteredSite } from './skill';
