@@ -30,6 +30,24 @@ export interface AuthSession {
   };
 }
 
+export interface DonationInfo {
+  wallet: string;
+  boostPoints: number;
+  minETH: string;
+  minUSDC: string;
+  supportedChains: Array<{ chainId: number; name: string }>;
+  usdcContracts: Record<string, string>;
+}
+
+export interface BoostResult {
+  success: boolean;
+  address: string;
+  boost: number;
+  token: string;
+  chainId: number;
+  txHash: string;
+}
+
 export interface ScoreResult {
   address: string;
   sybilScore: number;
@@ -177,6 +195,40 @@ export class AgentAuthSkill {
     });
 
     return res.ok;
+  }
+
+  /**
+   * Get donation info for boosting sybil score.
+   * Returns wallet address, minimum amounts, and supported chains.
+   */
+  async getDonationInfo(): Promise<DonationInfo> {
+    const res = await fetch(`${this.serverUrl}/api/boost/info`);
+
+    if (!res.ok) {
+      const err = await res.json() as { error: string };
+      throw new Error(`Failed to get donation info: ${err.error}`);
+    }
+
+    return res.json() as Promise<DonationInfo>;
+  }
+
+  /**
+   * Submit a donation transaction hash to boost sybil score by 50 points.
+   * You must first send 1 USDC or 0.001 ETH to the donation wallet.
+   */
+  async boostReputation(txHash: string, chainId: number): Promise<BoostResult> {
+    const res = await fetch(`${this.serverUrl}/api/boost`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ txHash, chainId }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json() as { error: string };
+      throw new Error(`Boost failed: ${err.error}`);
+    }
+
+    return res.json() as Promise<BoostResult>;
   }
 
   /** Clear the current session */

@@ -5,6 +5,7 @@ import { getSiteByApiKey } from '../services/sites';
 import { computeSybilScore } from '../services/sybil';
 import { getCachedAttestation, createAttestation } from '../services/attestation';
 import { createToken } from '../services/jwt';
+import { getDonationBoost } from '../services/boost';
 import type { AgentAuthConfig, VerifyRequest } from '../types';
 
 // Parse SIWE-style message to extract fields
@@ -121,6 +122,7 @@ export function verifyRouter(config: AgentAuthConfig): Router {
           balanceScore: cached.balanceScore,
           txCountScore: cached.txCountScore,
           accountAgeScore: cached.accountAgeScore,
+          donationBoost: 0,
           totalScore: cached.score,
         },
         details: null, // Details not available from cache
@@ -137,6 +139,7 @@ export function verifyRouter(config: AgentAuthConfig): Router {
             balanceScore: 0,
             txCountScore: 0,
             accountAgeScore: 0,
+            donationBoost: 0,
             totalScore: 0,
           },
           details: {
@@ -157,6 +160,13 @@ export function verifyRouter(config: AgentAuthConfig): Router {
       );
     }
 
+    // Apply donation boost
+    const donationBoost = getDonationBoost(parsed.address);
+    if (donationBoost > 0) {
+      sybilResult.breakdown.donationBoost = donationBoost;
+      sybilResult.breakdown.totalScore = Math.min(100, sybilResult.breakdown.totalScore + donationBoost);
+    }
+
     // Enforce site's minScore
     if (sybilResult.breakdown.totalScore < site.minScore) {
       res.status(403).json({
@@ -164,6 +174,13 @@ export function verifyRouter(config: AgentAuthConfig): Router {
         sybilScore: sybilResult.breakdown.totalScore,
         requiredScore: site.minScore,
         sybilBreakdown: sybilResult.breakdown,
+        boostAvailable: donationBoost === 0,
+        donationInfo: donationBoost === 0 ? {
+          wallet: config.donationWallet,
+          boostPoints: config.donationBoostPoints,
+          minETH: config.donationMinETH,
+          minUSDC: config.donationMinUSDC,
+        } : undefined,
       });
       return;
     }

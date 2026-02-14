@@ -259,6 +259,27 @@ async function checkScore() {
   }
 }
 
+// Audience toggle (For humans / For agents)
+const audienceToggle = document.getElementById('audience-toggle');
+const guideHumans = document.getElementById('guide-humans');
+const guideAgents = document.getElementById('guide-agents');
+const labelHumans = document.getElementById('toggle-label-humans');
+const labelAgents = document.getElementById('toggle-label-agents');
+
+audienceToggle.addEventListener('change', () => {
+  if (audienceToggle.checked) {
+    guideHumans.classList.add('hidden');
+    guideAgents.classList.remove('hidden');
+    labelHumans.classList.remove('toggle-label-active');
+    labelAgents.classList.add('toggle-label-active');
+  } else {
+    guideAgents.classList.add('hidden');
+    guideHumans.classList.remove('hidden');
+    labelAgents.classList.remove('toggle-label-active');
+    labelHumans.classList.add('toggle-label-active');
+  }
+});
+
 // Event listeners
 connectBtn.addEventListener('click', connect);
 disconnectBtn.addEventListener('click', disconnect);

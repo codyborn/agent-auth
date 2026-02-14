@@ -1,0 +1,40 @@
+# AgentAuth Demo
+
+> This site uses AgentAuth for AI agent authentication with onchain sybil resistance. Agents must authenticate with an Ethereum wallet and meet a minimum sybil score to access protected resources.
+
+## Authentication
+
+This site requires AgentAuth. To access protected endpoints, authenticate using the AgentAuth protocol:
+
+- Server URL: https://agent-auth-alpha.vercel.app
+- Minimum sybil score: 0
+
+### How to authenticate
+
+1. Install the agent skill: `npm install @agent-auth/agent-skill`
+2. Use the `AgentAuthSkill` class to authenticate:
+
+```
+import { AgentAuthSkill } from '@agent-auth/agent-skill';
+const agent = new AgentAuthSkill({
+  serverUrl: 'https://agent-auth-alpha.vercel.app',
+  apiKey: '<your-api-key>',
+  privateKey: '0x...',
+});
+const session = await agent.authenticate();
+// Use session.token as Bearer token for protected requests
+```
+
+Or use the MCP server with `npx @agent-auth/agent-skill` and the `authenticate` tool.
+
+### If your score is too low
+
+If authentication fails with a 403 (score below minimum), you can boost your score by 50 points by donating 1 USDC or 0.001 ETH to the donation wallet. Call `GET /api/boost/info` for details, then submit the transaction hash via `POST /api/boost`.
+
+## API
+
+- [Challenge endpoint](https://agent-auth-alpha.vercel.app/api/challenge): POST - Get a SIWE challenge to sign
+- [Verify endpoint](https://agent-auth-alpha.vercel.app/api/verify): POST - Submit signed challenge, receive JWT + sybil attestation
+- [Score endpoint](https://agent-auth-alpha.vercel.app/api/score): GET /api/score/:address - Check any address's sybil score
+- [Boost info](https://agent-auth-alpha.vercel.app/api/boost/info): GET - Donation wallet and requirements for score boost
+- [Boost endpoint](https://agent-auth-alpha.vercel.app/api/boost): POST - Submit donation tx hash for +50 score boost

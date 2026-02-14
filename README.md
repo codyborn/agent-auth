@@ -50,8 +50,28 @@ All signals are **aggregated across all supported chains** (Ethereum, Base, Opti
 | **Balance** | Total native token holdings across all chains | 33 |
 | **Transaction Count** | Total transactions across all chains | 34 |
 | **Account Age** | Estimated account maturity | 33 |
+| **Donation Boost** | Verified donation to boost wallet | 50 |
 
-The minimum score is **set by the site developer during registration** and enforced server-side. Clients cannot override it.
+The total score is capped at 100. The minimum score is **set by the site developer during registration** and enforced server-side. Clients cannot override it.
+
+### Reputation Boost
+
+Agents with low sybil scores can boost their score by **+50 points** by donating to the AgentAuth wallet. This provides an alternative path for legitimate agents with limited onchain history.
+
+**Requirements:**
+- Send **1 USDC** or **0.001 ETH** to the donation wallet
+- Supported on Ethereum, Base, Optimism, Arbitrum, or Polygon
+- Each transaction can only be used once
+
+```typescript
+// Get donation requirements
+const info = await agent.getDonationInfo();
+console.log(`Send to: ${info.wallet}`);
+
+// After sending the donation tx, submit the hash
+const result = await agent.boostReputation(txHash, chainId);
+console.log(`Boosted by ${result.boost} points`);
+```
 
 ## Quick Start
 
@@ -98,7 +118,20 @@ curl -X POST https://agent-auth-alpha.vercel.app/api/sites/register \
 # Returns: { siteId, apiKey, registeredBy, ... }
 ```
 
-### 2. Integrate (AI Agents - Recommended)
+### 2. Add to Your Website
+
+Add a `<link>` tag pointing to an [`llm.txt`](https://llmstxt.org) file so visiting AI agents discover how to authenticate — like `robots.txt` but for LLMs.
+
+```html
+<head>
+  <!-- Add this llm.txt so AI agents know how to authenticate -->
+  <link rel="llm" href="https://agent-auth-alpha.vercel.app/llm.txt" />
+</head>
+```
+
+AgentAuth hosts the `llm.txt` for you — agents that read it will know how to authenticate using the AgentAuth protocol.
+
+### 3. Integrate (AI Agents - Recommended)
 
 The Agent Skill handles the full auth flow in a single call:
 
@@ -119,7 +152,7 @@ console.log(`Score: ${session.sybilScore}/100`);
 const res = await agent.fetch('https://protected-api.com/data');
 ```
 
-### 3. MCP Server (for Claude, ChatGPT, etc.)
+### 4. MCP Server (for Claude, ChatGPT, etc.)
 
 Add AgentAuth as an MCP tool server so any MCP-compatible AI agent can authenticate:
 
@@ -143,11 +176,13 @@ Available MCP tools:
 - `register_site` - Register a new site (wallet signature required)
 - `authenticate` - Full wallet auth flow, returns JWT + sybil attestation
 - `check_sybil_score` - Look up any address's sybil score
+- `get_donation_info` - Get donation wallet address and required amounts for score boost
+- `boost_reputation` - Submit a donation tx hash to boost sybil score by 50 points
 - `authenticated_fetch` - Make HTTP requests with the auth token
 - `get_session` - Check current session status
 - `get_agent_address` - Get the configured wallet address
 
-### 4. Integrate (Browser)
+### 5. Integrate (Browser)
 
 ```typescript
 import { AgentAuthClient, BrowserWalletProvider } from '@agent-auth/sdk';
@@ -163,7 +198,7 @@ console.log(`Sybil Score: ${session.sybilScore}/100`);
 console.log(`JWT: ${session.token}`);
 ```
 
-### 5. Integrate (Node.js with SDK)
+### 6. Integrate (Node.js with SDK)
 
 ```typescript
 import { AgentAuthClient, PrivateKeyWalletProvider } from '@agent-auth/sdk';
@@ -311,7 +346,54 @@ Verify a signed challenge and get sybil score. Server enforces the site's `minSc
 {
   "error": "Sybil score below site minimum",
   "sybilScore": 10,
-  "requiredScore": 25
+  "requiredScore": 25,
+  "boostAvailable": true,
+  "donationInfo": {
+    "wallet": "0x24EcD23096fCF03A15ee8a6FE63F24345Cc4BA46",
+    "boostPoints": 50,
+    "minETH": "0.001",
+    "minUSDC": "1"
+  }
+}
+```
+
+### `POST /api/boost`
+
+Submit a donation transaction hash to boost sybil score by 50 points. No API key required.
+
+**Body:**
+```json
+{
+  "txHash": "0x...",
+  "chainId": 1
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "address": "0x...",
+  "boost": 50,
+  "token": "ETH",
+  "chainId": 1,
+  "txHash": "0x..."
+}
+```
+
+### `GET /api/boost/info`
+
+Get donation wallet address and requirements for score boost. No API key required.
+
+**Response:**
+```json
+{
+  "wallet": "0x24ecD23096fCF03A15ee8a6FE63F24345Cc4BA46",
+  "boostPoints": 50,
+  "minETH": "0.001",
+  "minUSDC": "1",
+  "supportedChains": [{ "chainId": 1, "name": "Ethereum" }],
+  "usdcContracts": { "1": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" }
 }
 ```
 
@@ -350,6 +432,10 @@ npm run dev
 | `RPC_POLYGON` | Public RPC | Polygon RPC |
 | `RPC_MONAD` | Public RPC | Monad RPC |
 | `REGISTRATION_MIN_SCORE` | `0` | Min sybil score to register a site |
+| `DONATION_WALLET` | `0x24EcD23096...` | Wallet address for donation boosts |
+| `DONATION_BOOST_POINTS` | `50` | Score points granted per donation |
+| `DONATION_MIN_ETH` | `0.001` | Minimum ETH donation amount |
+| `DONATION_MIN_USDC` | `1` | Minimum USDC donation amount |
 
 ## Architecture
 

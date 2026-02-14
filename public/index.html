@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AgentAuth Demo - Agent Authentication with Sybil Resistance</title>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="llm" href="/llm.txt">
 </head>
 <body>
   <div class="container">
@@ -186,18 +187,35 @@
 
     <!-- Integration Guide -->
     <section class="demo-section">
-      <h3>Integrate in 5 Lines</h3>
-      <h4>Step 1: Register your site</h4>
-      <div class="code-block">
-        <pre><code>curl -X POST https://your-agentauth-server.com/api/sites/register \
+      <div class="integrate-header">
+        <h3>Integration Guide</h3>
+        <div class="toggle-switch">
+          <span class="toggle-label toggle-label-active" id="toggle-label-humans">For humans</span>
+          <label class="switch">
+            <input type="checkbox" id="audience-toggle">
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label" id="toggle-label-agents">For agents</span>
+        </div>
+      </div>
+
+      <!-- For Humans -->
+      <div id="guide-humans">
+        <h4>Step 1: Register your site</h4>
+        <div class="code-block">
+          <pre><code>curl -X POST https://your-agentauth-server.com/api/sites/register \
   -H 'Content-Type: application/json' \
   -d '{"domain":"example.com","callbackUrls":["https://example.com/callback"],"minScore":25}'
 # Returns: { siteId, apiKey, ... }</code></pre>
-      </div>
+        </div>
 
-      <h4 style="margin-top: 2rem;">Step 2: Add to your website</h4>
-      <div class="code-block">
-        <pre><code>import { AgentAuthClient, BrowserWalletProvider } from '@agent-auth/sdk';
+        <h4 style="margin-top: 2rem;">Step 2: Add to your website</h4>
+        <div class="code-block">
+          <pre><code>&lt;!-- Add this llm.txt so AI agents know how to authenticate --&gt;
+&lt;link rel="llm" href="https://agent-auth-alpha.vercel.app/llm.txt" /&gt;
+
+&lt;script type="module"&gt;
+import { AgentAuthClient, BrowserWalletProvider } from '@agent-auth/sdk';
 
 const auth = new AgentAuthClient({
   serverUrl: 'https://your-agentauth-server.com',
@@ -205,25 +223,18 @@ const auth = new AgentAuthClient({
 });
 
 const session = await auth.login(new BrowserWalletProvider());
-console.log(`Score: ${session.sybilScore}/100`);</code></pre>
+console.log(`Score: ${session.sybilScore}/100`);
+&lt;/script&gt;</code></pre>
+        </div>
       </div>
 
-      <h4 style="margin-top: 2rem;">For AI Agents (Node.js)</h4>
-      <div class="code-block">
-        <pre><code>import { AgentAuthClient, PrivateKeyWalletProvider } from '@agent-auth/sdk';
-import { privateKeyToAccount } from 'viem/accounts';
-
-const account = privateKeyToAccount('0x...');
-const wallet = new PrivateKeyWalletProvider(
-  account.address,
-  (msg) => account.signMessage({ message: msg })
-);
-
-const auth = new AgentAuthClient({
-  serverUrl: 'https://your-agentauth-server.com',
-  apiKey: 'aa_your_site_api_key'
-});
-const session = await auth.login(wallet);</code></pre>
+      <!-- For Agents -->
+      <div id="guide-agents" class="hidden">
+        <h4>Install the agent skill</h4>
+        <div class="code-block">
+          <pre><code>git clone https://github.com/codyborn/agent-auth.git
+cd agent-auth && npm install && npm run build --workspace=agent-skill</code></pre>
+        </div>
       </div>
     </section>
 

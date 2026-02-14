@@ -124,6 +124,7 @@ export async function computeSybilScore(
     balanceScore: balanceScoreVal,
     txCountScore: txCountScoreVal,
     accountAgeScore: accountAgeScoreVal,
+    donationBoost: 0,
     totalScore: balanceScoreVal + txCountScoreVal + accountAgeScoreVal,
   };
 

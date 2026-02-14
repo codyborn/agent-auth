@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { isAddress } from 'viem';
 import { computeSybilScore } from '../services/sybil';
+import { getDonationBoost } from '../services/boost';
 import type { AgentAuthConfig } from '../types';
 
 export function scoreRouter(config: AgentAuthConfig): Router {
@@ -18,6 +19,13 @@ export function scoreRouter(config: AgentAuthConfig): Router {
 
     try {
       const result = await computeSybilScore(address, config.rpcUrls);
+
+      // Apply donation boost
+      const donationBoost = getDonationBoost(address);
+      if (donationBoost > 0) {
+        result.breakdown.donationBoost = donationBoost;
+        result.breakdown.totalScore = Math.min(100, result.breakdown.totalScore + donationBoost);
+      }
 
       res.json({
         address,

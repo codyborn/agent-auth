@@ -12,6 +12,7 @@ export interface SybilScoreBreakdown {
   balanceScore: number;      // 0-33 (aggregated across chains)
   txCountScore: number;      // 0-34 (aggregated across chains)
   accountAgeScore: number;   // 0-33 (estimated from aggregate tx count)
+  donationBoost: number;     // 0 or 50 (from verified donation)
   totalScore: number;        // 0-100
 }
 
@@ -54,4 +55,8 @@ export interface AgentAuthConfig {
   challengeTTL: number; // seconds
   rpcUrls: Record<number, string>;
   attestationPrivateKey: string; // Server wallet key for signing EIP-712 attestations
+  donationWallet: string;
+  donationBoostPoints: number;
+  donationMinETH: string;
+  donationMinUSDC: string;
 }

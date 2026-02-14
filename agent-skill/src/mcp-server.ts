@@ -212,6 +212,57 @@ server.tool(
   }
 );
 
+// Tool: Get donation info for boosting score
+server.tool(
+  'get_donation_info',
+  'Get the donation wallet address and required amounts to boost your sybil score by 50 points. Use this if your score is too low for a site\'s minimum requirement.',
+  {},
+  async () => {
+    try {
+      const s = getSkill();
+      const info = await s.getDonationInfo();
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(info, null, 2),
+        }],
+      };
+    } catch (err: any) {
+      return {
+        content: [{ type: 'text' as const, text: `Failed to get donation info: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Tool: Boost reputation via donation
+server.tool(
+  'boost_reputation',
+  'Submit a donation transaction hash to boost your sybil score by 50 points. You must first send 1 USDC or 0.001 ETH to the donation wallet on a supported chain.',
+  {
+    txHash: z.string().describe('Transaction hash of the donation'),
+    chainId: z.number().describe('Chain ID where the donation was sent (1=Ethereum, 8453=Base, 10=Optimism, 42161=Arbitrum, 137=Polygon)'),
+  },
+  async ({ txHash, chainId }) => {
+    try {
+      const s = getSkill();
+      const result = await s.boostReputation(txHash, chainId);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify(result, null, 2),
+        }],
+      };
+    } catch (err: any) {
+      return {
+        content: [{ type: 'text' as const, text: `Boost failed: ${err.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // Tool: Get agent wallet address
 server.tool(
   'get_agent_address',

@@ -6,6 +6,7 @@ import { verifyRouter } from './routes/verify';
 import { scoreRouter } from './routes/score';
 import { sessionRouter } from './routes/session';
 import { sitesRouter } from './routes/sites';
+import { boostRouter } from './routes/boost';
 import type { AgentAuthConfig } from './types';
 
 // Default dev key - DO NOT use in production
@@ -16,6 +17,10 @@ const config: AgentAuthConfig = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
   challengeTTL: parseInt(process.env.CHALLENGE_TTL || '300'), // 5 minutes
   attestationPrivateKey: process.env.ATTESTATION_PRIVATE_KEY || DEV_ATTESTATION_KEY,
+  donationWallet: process.env.DONATION_WALLET || '0x24EcD23096fCF03A15ee8a6FE63F24345Cc4BA46',
+  donationBoostPoints: parseInt(process.env.DONATION_BOOST_POINTS || '50'),
+  donationMinETH: process.env.DONATION_MIN_ETH || '0.001',
+  donationMinUSDC: process.env.DONATION_MIN_USDC || '1',
   rpcUrls: {
     1: process.env.RPC_ETH_MAINNET || 'https://eth.drpc.org',
     8453: process.env.RPC_BASE || 'https://base.drpc.org',
@@ -42,6 +47,7 @@ app.use('/api/challenge', challengeRouter(config));
 app.use('/api/verify', verifyRouter(config));
 app.use('/api/score', scoreRouter(config));
 app.use('/api/session', sessionRouter(config));
+app.use('/api/boost', boostRouter(config));
 
 // Health check
 app.get('/api/health', (_req, res) => {
